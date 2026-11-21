@@ -51,13 +51,14 @@ All extension code lives under nested Ruby modules (e.g., `Examples::HelloCube`)
 
 Tests use the [TestUp](https://github.com/SketchUp/testup-2) framework (`TestUp::TestCase`), not standard Minitest directly. Tests run inside SketchUp, not standalone Ruby. Test files are in `tests/`, one folder per test suite.
 
-Run them with the `run_tests` tool from the SketchUp bridge, e.g. suite `tests/Cube Example`. After changing extension code, pass the extension's folder in `reload` (e.g. `src/ex_hello_cube`), or the tests run against the code SketchUp loaded at startup. To debug a failure, run just that test, then inspect state with `evaluate_ruby`. If `run_tests` refuses because the model has unsaved changes, ask the user before passing `discard_model_changes`, since the tests may clear the model.
+Run them with the `run_tests` tool from the SketchUp bridge, e.g. suite `tests/Cube Example`. After changing extension code, pass the extension's folder in `reload` (e.g. `src/ex_hello_cube`), or the tests run against the code SketchUp loaded at startup. To debug a failure, run just that test, then inspect state with `evaluate_ruby`. If `run_tests` refuses, because the model has unsaved changes or because it was switched outside the bridge, ask the user before passing `discard_model_changes` or `accept_switched_model`, since the tests may clear the model.
 
 ### SketchUp bridge
 
 When SketchUp was started with `--bridge`, the `evaluate_ruby` tool from the `sketchup-bridge` MCP server runs Ruby in that SketchUp. Use it to check how an API method actually behaves, rather than guessing, and to verify changes in the live model. It is the user's SketchUp session: wrap model changes in `start_operation`/`commit_operation` so they can be undone. See [tools/sketchup-bridge/README.md](tools/sketchup-bridge/README.md).
 
 - The rules in `.claude/rules/` about the SketchUp API apply to code sent through the bridge too, even though they're only loaded automatically for files in `src/`. [sketchup-geometry-authoring.md](.claude/rules/sketchup-geometry-authoring.md) and [sketchup-model-operations.md](.claude/rules/sketchup-model-operations.md) matter most.
+- Every result ends with which model is active. The user can open a model of their own in that SketchUp. A result that starts with a warning that the active model changed means the code ran in a model that was created, opened or switched to outside the bridge: stop, and ask the user before changing it or running tests in it.
 - Check the result, don't assume it. Return the values you care about, such as `face.valid?`, `group.manifold?` or entity counts, from the same call that makes the change.
 - To see the model, save a screenshot with `Sketchup.active_model.active_view.write_image(filename: path, width: 1200, height: 800, antialias: true)`, then read the image.
 - To try out API behaviour without leaving anything behind, make the changes inside an operation and end it with `model.abort_operation` rather than `commit_operation`.
