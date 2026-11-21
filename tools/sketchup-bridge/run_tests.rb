@@ -45,6 +45,8 @@ module SketchUpBridge
     #   "reload" - absolute paths of files or folders to `load` first.
     #   "seed" - Minitest seed. Random when not given.
     #   "discard_model_changes" - run even if the model has unsaved changes.
+    #   "accept_switched_model" - run even if the model became the active one
+    #                             outside the bridge.
     def self.run(options)
       output = StringIO.new
       stdout = $stdout
@@ -71,14 +73,8 @@ module SketchUpBridge
       suite_path = options['suite']
       return { error: "No such test suite folder: #{suite_path}" } unless File.directory?(suite_path)
 
-      model = Sketchup.active_model
-      unless options['discard_model_changes'] || safe_to_change?(model)
-        return {
-          refused: 'The model has unsaved changes that were not made by a previous test run. ' \
-                   'Tests can clear the model, so they were not run. Save the model, or pass ' \
-                   'discard_model_changes if the changes can be lost.'
-        }
-      end
+      refusal = refusal(Sketchup.active_model, options)
+      return { refused: refusal } if refusal
 
       reloaded = reload(options['reload'] || [])
 
@@ -140,20 +136,49 @@ module SketchUpBridge
       end
     end
 
+    # Why the tests can't run in this model, or nil when they can.
+    def self.refusal(model, options)
+      if switched_model?
+        unless options['accept_switched_model']
+          return 'The active model was created, opened or switched to outside the bridge, most likely ' \
+                 'by the user, so it may hold their work. Tests can clear the model, so they were not ' \
+                 'run. Ask the user, then pass accept_switched_model if the tests may run in this model.'
+        end
+        ModelWatch.accept
+      end
+      return nil if options['discard_model_changes'] || safe_to_change?(model)
+
+      'The model has unsaved changes that were not made by a previous test run. ' \
+        'Tests can clear the model, so they were not run. Save the model, or pass ' \
+        'discard_model_changes if the changes can be lost.'
+    end
+
+    # server.rb keeps track of this. A SketchUp that was started before the
+    # bridge did so runs the older server.rb until it is restarted.
+    def self.switched_model?
+      defined?(ModelWatch) && ModelWatch.unexpected?
+    end
+
     def self.safe_to_change?(model)
       return true unless model.modified?
 
-      @model.equal?(model) && !@tracker.changed
+      @model.equal?(model) && @replacements == replacements && !@tracker.changed
     end
 
     def self.track(model)
-      unless @model.equal?(model)
-        @model&.remove_observer(@tracker) if @model&.valid?
-        @tracker = ChangeTracker.new
-        model.add_observer(@tracker)
-        @model = model
-      end
-      @tracker.changed = false
+      @model.remove_observer(@tracker) if @tracker && @model.valid?
+      @tracker = ChangeTracker.new
+      model.add_observer(@tracker)
+      @model = model
+      @replacements = replacements
+    end
+
+    # How many models have been created or opened. On Windows, up to SketchUp
+    # 2026, a new model is the same Ruby object as the one it replaced, but
+    # without its observers, so the object and the tracker alone can't tell
+    # that the model is another.
+    def self.replacements
+      defined?(ModelWatch) ? ModelWatch.replacements : 0
     end
 
     # @param [TestUp::Report::TestSuite] results

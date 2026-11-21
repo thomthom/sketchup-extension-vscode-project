@@ -54,8 +54,11 @@ module SketchUpBridge
 
         Tests run in the active model, and many clear it first. So this refuses
         to run while the model has unsaved changes, unless the only changes
-        since the previous run came from the tests. If it refuses, ask the user
-        before passing discard_model_changes.
+        since the previous run came from the tests. It also refuses when the
+        active model was created, opened or switched to outside the bridge,
+        which is what it looks like when the user opens a model of their own.
+        If it refuses, ask the user before passing discard_model_changes or
+        accept_switched_model.
 
         Test files are loaded again on every run, but the extension code they
         test is not. After changing the extension, pass its folder in `reload`.
@@ -84,6 +87,11 @@ module SketchUpBridge
           discard_model_changes: {
             type: 'boolean',
             description: 'Run even though the model has unsaved changes, which the tests may throw away.'
+          },
+          accept_switched_model: {
+            type: 'boolean',
+            description: 'Run even though the active model was created, opened or switched to outside the ' \
+                         'bridge, most likely by the user. Only once the user has agreed to tests running in it.'
           }
         },
         required: ['suite']
@@ -179,7 +187,8 @@ module SketchUpBridge
         'tests' => arguments['tests'] || [],
         'reload' => (arguments['reload'] || []).map { |path| expand_path(path) },
         'seed' => arguments['seed'],
-        'discard_model_changes' => arguments['discard_model_changes'] == true
+        'discard_model_changes' => arguments['discard_model_changes'] == true,
+        'accept_switched_model' => arguments['accept_switched_model'] == true
       }
       # Warnings about constants being defined again, from loading the file a
       # second time, would otherwise end up in front of the JSON.
