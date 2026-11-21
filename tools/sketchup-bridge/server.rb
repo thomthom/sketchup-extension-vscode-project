@@ -42,9 +42,21 @@ module SketchUpBridge
     @busy = false
     UI.start_timer(POLL_INTERVAL, true) { poll }
     ModelWatch.start
+    show_frame
     puts "SketchUp bridge: listening on 127.0.0.1:#{PORT}"
   rescue SystemCallError => error
     puts "SketchUp bridge: could not listen on port #{PORT}: #{error.message}"
+  end
+
+  # Shows in the viewport that this SketchUp is driven through the bridge. The
+  # bridge works the same without it, on SketchUp versions that lack overlays.
+  def self.show_frame
+    return unless defined?(Sketchup::Overlay)
+
+    require_relative 'overlay'
+    Frame.start
+  rescue StandardError, ScriptError => error
+    puts "SketchUp bridge: could not show the frame: #{error.class}: #{error.message}"
   end
 
   # Everything happens on the main thread, from a timer, and never blocks.
