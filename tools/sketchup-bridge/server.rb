@@ -12,6 +12,8 @@ require 'json'
 require 'socket'
 require 'stringio'
 
+require_relative 'model_watch'
+
 module SketchUpBridge
 
   PORT = 7200 # Keep in sync with client.rb.
@@ -39,6 +41,7 @@ module SketchUpBridge
     @requests = []
     @busy = false
     UI.start_timer(POLL_INTERVAL, true) { poll }
+    ModelWatch.start
     puts "SketchUp bridge: listening on 127.0.0.1:#{PORT}"
   rescue SystemCallError => error
     puts "SketchUp bridge: could not listen on port #{PORT}: #{error.message}"
@@ -108,6 +111,12 @@ module SketchUpBridge
     return failure('The request is not valid UTF-8.') unless code.valid_encoding?
     return failure('HTTP requests are not accepted.') if code.match?(HTTP_REQUEST)
 
+    ModelWatch.begin_request
+    response = run(code)
+    response.merge(ModelWatch.end_request)
+  end
+
+  def self.run(code)
     output = StringIO.new
     stdout = $stdout
     stderr = $stderr

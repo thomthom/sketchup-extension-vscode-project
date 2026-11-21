@@ -31,6 +31,11 @@ module SketchUpBridge
 
         Wrap changes to the model in model.start_operation(name, true) and
         model.commit_operation, so that they are a single step the user can undo.
+
+        Every result ends with which model is active. The user can work in this
+        SketchUp too. A result that starts with a warning that the active model
+        changed means the code ran in a model they created, opened or switched
+        to: ask before changing it.
       TEXT
       inputSchema: {
         type: 'object',
@@ -159,7 +164,13 @@ module SketchUpBridge
       else
         text += error_text(response)
       end
-      [text, !response['success']]
+      [with_model(text, response), !response['success']]
+    end
+
+    # Adds which model the code ran in. The warning that the user seems to
+    # have switched model goes first, where it is hardest to miss.
+    def self.with_model(text, response)
+      [SketchUpBridge.model_warning(response), text, SketchUpBridge.model_status(response)].compact.join("\n\n")
     end
 
     def self.run_tests(arguments)
@@ -181,6 +192,11 @@ module SketchUpBridge
              "end\n" \
              "SketchUpBridge::RunTests.run(JSON.parse(#{JSON.generate(options).dump}))"
       response = SketchUpBridge.evaluate(code)
+      text, error = test_result(response)
+      [with_model(text, response), error]
+    end
+
+    def self.test_result(response)
       return [error_text(response), true] unless response['success']
 
       report = begin

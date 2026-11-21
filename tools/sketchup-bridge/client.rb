@@ -18,8 +18,13 @@ module SketchUpBridge
 
   class NotRunning < StandardError; end
 
+  MODEL_CHANGED = 'WARNING: The active model in SketchUp is not the one the previous call left. It was ' \
+                  'created, opened or switched to outside the bridge, most likely by the user, so it ' \
+                  'may hold their work. Ask before changing it or running tests in it.'
+
   # Returns the bridge's response: a Hash with "success", "output", and either
-  # "result", or "error" and "backtrace".
+  # "result", or "error" and "backtrace". Also "model" and "model_changed",
+  # which `model_status` and `model_warning` turn into text.
   def self.evaluate(code)
     socket = connect
     begin
@@ -38,6 +43,24 @@ module SketchUpBridge
                       'Start SketchUp with: ruby tools/debug-sketchup.rb <version> --bridge'
   end
 
+  # One line saying which model the code ran in. Nil when the response doesn't
+  # say, which is when the request was refused.
+  def self.model_status(response)
+    return nil unless response.key?('model')
+
+    model = response['model']
+    return '[Active model: none]' unless model
+
+    name = model['path'].empty? ? 'untitled, not saved to a file' : model['path']
+    "[Active model: #{name}, #{model['modified'] ? 'with' : 'without'} unsaved changes]"
+  end
+
+  # A warning when the user seems to have switched to another model since the
+  # previous call, otherwise nil.
+  def self.model_warning(response)
+    response['model_changed'] ? MODEL_CHANGED : nil
+  end
+
 end
 
 if $PROGRAM_NAME == __FILE__
@@ -50,11 +73,14 @@ if $PROGRAM_NAME == __FILE__
   end
 
   print(response['output'])
-  if response['success']
-    puts(response['result'])
-  else
+  puts(response['result']) if response['success']
+
+  # On stderr, so that stdout holds only what the code printed and returned.
+  $stdout.flush
+  unless response['success']
     warn(response['error'])
     response['backtrace'].each { |line| warn("  #{line}") }
-    exit(1)
   end
+  [SketchUpBridge.model_status(response), SketchUpBridge.model_warning(response)].compact.each { |line| warn(line) }
+  exit(1) unless response['success']
 end
