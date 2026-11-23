@@ -56,7 +56,7 @@ module SketchUpBridge
     puts "SketchUp bridge: could not listen on port #{PORT}: #{error.message}"
   end
 
-  # Shows in the viewport that this session is driven through the bridge. The
+  # Shows in the viewport that this instance is driven through the bridge. The
   # bridge works the same without it, on SketchUp versions that lack overlays.
   def self.show_frame
     return unless defined?(Sketchup::Overlay)

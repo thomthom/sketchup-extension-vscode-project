@@ -101,12 +101,12 @@ module SketchUpBridge
     end
 
     def self.check_testup
-      return 'TestUp is not loaded in this SketchUp session.' unless defined?(TestUp::API)
+      return 'TestUp is not loaded in this SketchUp instance.' unless defined?(TestUp::API)
 
       version = TestUp::PLUGIN_VERSION
       return nil if Gem::Version.new(version) >= Gem::Version.new(TESTUP_VERSION)
 
-      "run_tests needs TestUp #{TESTUP_VERSION} or newer, and this session has TestUp #{version}."
+      "run_tests needs TestUp #{TESTUP_VERSION} or newer, and this instance has TestUp #{version}."
     end
 
     # Loads extension code again, so the tests run against the latest source.
@@ -153,7 +153,7 @@ module SketchUpBridge
         'discard_model_changes if the changes can be lost.'
     end
 
-    # server.rb keeps track of this. A session that was started before the
+    # server.rb keeps track of this. An instance that was started before the
     # bridge did so runs the older server.rb until it is restarted.
     def self.switched_model?
       defined?(ModelWatch) && ModelWatch.unexpected?

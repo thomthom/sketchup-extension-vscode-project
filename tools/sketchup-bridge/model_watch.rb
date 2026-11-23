@@ -2,9 +2,10 @@
 # bridge can say which one it is, and whether it is still the one the previous
 # request left. Loaded by server.rb.
 #
-# The SketchUp session that the bridge runs in is one the user can work in too.
-# When they create or open a model there, whoever is sending code has no other
-# way of knowing that it now runs in that model, which may hold the user's work.
+# The SketchUp instance that the bridge runs in is one the user can work in
+# too. When they create or open a model there, whoever is sending code has no
+# other way of knowing that it now runs in that model, which may hold the
+# user's work.
 
 module SketchUpBridge
   module ModelWatch

@@ -1,4 +1,4 @@
-# Marks the SketchUp session that the bridge runs in: a frame around the
+# Marks the SketchUp instance that the bridge runs in: a frame around the
 # viewport, with a line of text. It tells whoever sits at it that code sent
 # through the bridge may change or clear the model, so that they don't open
 # their own work in it by mistake.
@@ -65,7 +65,7 @@ module SketchUpBridge
 
     def initialize
       super('sketchup_bridge.frame', 'SketchUp Bridge',
-            description: 'Warns that an AI agent can run code in this session.')
+            description: 'Warns that an AI agent can run code in this SketchUp instance.')
     end
 
     # Called very often, so it does as little as it can.

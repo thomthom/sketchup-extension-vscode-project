@@ -33,10 +33,10 @@ module SketchUpBridge
         model.commit_operation, so that they are a single step the user can undo.
 
         Every result ends with which model is active. The user can work in this
-        session too. When they have created, opened or switched to another model
-        since the previous call, the code is not run, and the result says so.
-        Ask the user before sending it again, unless they have already said to
-        work in that model.
+        instance too. When they have created, opened or switched to another
+        model since the previous call, the code is not run, and the result says
+        so. Ask the user before sending it again, unless they have already said
+        to work in that model.
       TEXT
       inputSchema: {
         type: 'object',
