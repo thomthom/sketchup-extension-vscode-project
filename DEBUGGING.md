@@ -122,7 +122,7 @@ open -n -a "<app>" --env "DYLD_LIBRARY_PATH=<app>/Contents/Frameworks/Ruby.frame
 Executing `<app>/Contents/MacOS/SketchUp` directly does **not** run the
 `-RubyStartup` file — macOS reads these switches through `NSUserDefaults` rather than
 by parsing the command line. Arguments must follow `--args`, and `-n` forces a new
-instance, or `open` merely activates a running SketchUp and drops the arguments.
+instance, or `open` merely activates the one that is running and drops the arguments.
 
 **`DYLD_LIBRARY_PATH` (SKEXT-5430).** The bundled `debug` gem's native extension is
 linked against `@executable_path/../lib/libruby.<major>.<minor>.dylib`, which

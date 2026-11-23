@@ -101,8 +101,8 @@ if mac
   # SketchUp has to be launched through `open`. Running the binary inside the app
   # bundle directly does not run the `-RubyStartup` file at all. Arguments must
   # come after `--args`, or `open` interprets them itself, and `-n` forces a new
-  # instance - without it `open` just activates an already running SketchUp and
-  # silently drops the arguments.
+  # instance - without it `open` just activates an instance that is already
+  # running and silently drops the arguments.
   #
   # DYLD_LIBRARY_PATH works around SKEXT-5430. The bundled debug gem's native
   # extension is linked against a libruby path that SketchUp's packaging removes,

@@ -103,7 +103,7 @@ module SketchUpDebugBootstrap
       begin
         require 'debug/session'
       rescue LoadError => error
-        log("the `debug` gem is not available in this SketchUp's Ruby: #{error.message}")
+        log("the `debug` gem is not available in SketchUp's Ruby: #{error.message}")
         next false
       end
 
