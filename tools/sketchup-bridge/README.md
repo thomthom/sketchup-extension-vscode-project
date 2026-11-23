@@ -14,7 +14,7 @@ It is a development tool, for use while working on an extension. Nothing here is
 
    The Ruby Console shows `SketchUp bridge: listening on 127.0.0.1:7200`. The debugger is started as well, so you can still attach to SketchUp as described in [DEBUGGING.md](../../DEBUGGING.md).
 
-   The viewport gets an orange frame with the text "Claude bridge active: this model may be changed or cleared". See [Whose model it is](#whose-model-it-is).
+   The viewport gets an orange frame with the text "AI agent may change this model". See [Whose model it is](#whose-model-it-is).
 
 2. Start Claude Code in the project. It asks whether to enable the `sketchup-bridge` MCP server from `.mcp.json`. Once you approve it, Claude has two tools: `evaluate_ruby`, and `run_tests` for running TestUp tests.
 

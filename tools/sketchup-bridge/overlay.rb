@@ -9,7 +9,7 @@
 module SketchUpBridge
   class Frame < Sketchup::Overlay
 
-    TEXT = 'Claude bridge active: this model may be changed or cleared'.freeze
+    TEXT = 'AI agent may change this model'.freeze
 
     COLOR = Sketchup::Color.new(235, 95, 0)
     TEXT_COLOR = Sketchup::Color.new(255, 255, 255)
@@ -65,7 +65,7 @@ module SketchUpBridge
 
     def initialize
       super('sketchup_bridge.frame', 'SketchUp Bridge',
-            description: 'Marks a SketchUp that Claude Code can run code in, through the SketchUp bridge.')
+            description: 'Marks a SketchUp that an AI agent can run code in, through the SketchUp bridge.')
     end
 
     # Called very often, so it does as little as it can.
