@@ -1,6 +1,6 @@
 # SketchUp bridge
 
-Lets Claude Code run Ruby inside a running SketchUp, so that it can check how the API actually behaves, inspect the model, and try out changes, rather than guessing.
+Lets Claude Code run Ruby inside a running SketchUp session, so that it can check how the API actually behaves, inspect the model, and try out changes, rather than guessing.
 
 It is a development tool, for use while working on an extension. Nothing here is part of the extension itself.
 
@@ -40,9 +40,9 @@ On an error it prints the message and backtrace to stderr, and exits with status
 
 ## Whose model it is
 
-The SketchUp that the bridge runs in looks like any other, and you can work in it. But code sent through the bridge runs in whatever model is active, and tests may clear it. Two things guard against a model of your own getting in the way.
+The SketchUp session that the bridge runs in looks like any other, and you can work in it. But code sent through the bridge runs in whatever model is active, and tests may clear it. Two things guard against a model of your own getting in the way.
 
-**A frame in the viewport, for you.** While the bridge is running, the viewport has a thin orange frame, and one line of text at the top. It is there so that you don't open your own work in that SketchUp by mistake. It is an overlay, named **SketchUp Bridge** in the Overlays panel, and it is added to every model you create or open. You can switch it off there, for instance when it is in the way of what you are testing. It then stays off in the models you create or open afterwards, and comes back the next time SketchUp is started with the bridge. A SketchUp started without `--bridge` never shows it.
+**A frame in the viewport, for you.** While the bridge is running, the viewport has a thin orange frame, and one line of text at the top. It is there so that you don't open your own work in that session by mistake. It is an overlay, named **SketchUp Bridge** in the Overlays panel, and it is added to every model you create or open. You can switch it off there, for instance when it is in the way of what you are testing. It then stays off in the models you create or open afterwards, and comes back the next time SketchUp is started with the bridge. A session started without `--bridge` never shows it.
 
 **A notice in every reply, for Claude.** Every reply says which model is active: its file, or that it hasn't been saved to one, and whether it has unsaved changes.
 
@@ -50,7 +50,7 @@ The SketchUp that the bridge runs in looks like any other, and you can work in i
 
 ## Running TestUp tests
 
-`run_tests` runs a [TestUp](https://github.com/SketchUp/testup-2) test suite in SketchUp, and reports each failure, error and skip with its message and location. It needs TestUp 2.6 or newer installed in that SketchUp. It doesn't need TestUp's window, and doesn't install any gems.
+`run_tests` runs a [TestUp](https://github.com/SketchUp/testup-2) test suite in SketchUp, and reports each failure, error and skip with its message and location. It needs TestUp 2.6 or newer loaded in that session. It doesn't need TestUp's window, and doesn't install any gems.
 
 - **Suite:** the folder holding the `TC_*.rb` files, such as `tests/Cube Example`.
 - **Tests:** test cases or single tests, such as `TC_Main` or `TC_Main#test_create_cube`, with or without their namespace. By default the whole suite runs. A name that matches no test is reported as an error.
@@ -96,7 +96,7 @@ Results and output are cut off at 50,000 characters. A connection that hasn't fi
 
 ## Limitations
 
-- **One SketchUp at a time.** The port is fixed, so a second SketchUp started with the bridge reports that the port is in use.
+- **One session at a time.** The port is fixed, so a second SketchUp session started with the bridge reports that the port is in use.
 - **Not while code is running.** The bridge doesn't answer while SketchUp is busy, including while a modal dialog is open.
 - **The refusal is a question, not a lock.** After a model is switched, one call is refused, and Claude is told to ask you. Nothing stops the same call from being sent again.
 - **The bridge can't tell who switched the model.** It only knows that it didn't happen while code from the bridge was running. A switch that such code sets off for later, with a timer for instance, counts as made outside the bridge.

@@ -1,7 +1,7 @@
-# Marks the SketchUp that the bridge runs in: a frame around the viewport, with
-# a line of text. It tells whoever sits at that SketchUp that code sent through
-# the bridge may change or clear the model, so that they don't open their own
-# work in it by mistake.
+# Marks the SketchUp session that the bridge runs in: a frame around the
+# viewport, with a line of text. It tells whoever sits at it that code sent
+# through the bridge may change or clear the model, so that they don't open
+# their own work in it by mistake.
 #
 # Loaded by server.rb once the bridge is listening, on SketchUp 2023 and newer,
 # which is when overlays were added.
@@ -65,7 +65,7 @@ module SketchUpBridge
 
     def initialize
       super('sketchup_bridge.frame', 'SketchUp Bridge',
-            description: 'Marks a SketchUp that an AI agent can run code in, through the SketchUp bridge.')
+            description: 'Warns that an AI agent can run code in this session.')
     end
 
     # Called very often, so it does as little as it can.
