@@ -22,9 +22,9 @@
       "problemMatcher": []
     },
     {
-      // The same, plus the eval bridge on port 7200, which lets Claude Code run
+      // The same, plus the eval bridge on port 7200, which lets an AI agent run
       // Ruby in SketchUp. See tools/sketchup-bridge/README.md.
-      "label": "Launch SketchUp for debugging, with Claude bridge",
+      "label": "Launch SketchUp for debugging, with AI agent bridge",
       "type": "process",
       "command": "ruby",
       "args": [

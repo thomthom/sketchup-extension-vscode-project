@@ -1,5 +1,5 @@
 # Runs Ruby code sent over TCP inside SketchUp, so that tools outside SketchUp
-# can inspect and drive the running instance: Claude Code through mcp_server.rb,
+# can inspect and drive the running instance: an AI agent through mcp_server.rb,
 # or client.rb from a terminal. See README.md.
 #
 # Started by `ruby tools/debug-sketchup.rb <version> --bridge`, which passes this

@@ -1,6 +1,7 @@
-# MCP server giving Claude Code tools that work in SketchUp through the bridge
+# MCP server giving an AI agent tools that work in SketchUp through the bridge
 # (server.rb): `evaluate_ruby` runs code, and `run_tests` runs TestUp tests.
-# Claude Code starts it from .mcp.json and talks to it over stdio.
+# Claude Code starts it from .mcp.json and talks to it over stdio. Other agents
+# that support MCP servers over stdio can start it the same way.
 #
 # Implements just the part of MCP this needs, so that it runs with any Ruby 2.7
 # or newer on PATH and needs no gems.

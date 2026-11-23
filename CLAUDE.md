@@ -30,7 +30,7 @@ bundle exec yard doc
 # Launch SketchUp with the Ruby debugger enabled
 ruby tools/debug-sketchup.rb <version> [port]   # e.g., ruby tools/debug-sketchup.rb 2026 7150
 
-# The same, plus the bridge that lets Claude run Ruby in SketchUp
+# The same, plus the bridge that lets an AI agent run Ruby in SketchUp
 ruby tools/debug-sketchup.rb <version> --bridge
 ```
 

@@ -5,7 +5,7 @@
 # The version may be given as either `2026` or `26`.
 #
 # `--bridge` also starts the eval bridge in tools/sketchup-bridge, which lets
-# Claude Code run Ruby in SketchUp. See tools/sketchup-bridge/README.md.
+# an AI agent run Ruby in SketchUp. See tools/sketchup-bridge/README.md.
 #
 # SketchUp is launched with `-RubyStartup` pointing at
 # tools/su_debug_bootstrap.rb, which starts the `debug` gem's server, and with

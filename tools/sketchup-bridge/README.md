@@ -1,12 +1,12 @@
 # SketchUp bridge
 
-Lets Claude Code run Ruby inside a running SketchUp instance, so that it can check how the API actually behaves, inspect the model, and try out changes, rather than guessing.
+Lets an AI agent, such as Claude Code, run Ruby inside a running SketchUp instance, so that it can check how the API actually behaves, inspect the model, and try out changes, rather than guessing.
 
 It is a development tool, for use while working on an extension. Nothing here is part of the extension itself.
 
 ## Setup
 
-1. Start SketchUp with the bridge, using the **Launch SketchUp for debugging, with Claude bridge** task, or:
+1. Start SketchUp with the bridge, using the **Launch SketchUp for debugging, with AI agent bridge** task, or:
 
    ```sh
    ruby tools/debug-sketchup.rb 2026 --bridge
@@ -16,9 +16,9 @@ It is a development tool, for use while working on an extension. Nothing here is
 
    The viewport gets an orange frame with the text "AI agent may change this model". See [Whose model it is](#whose-model-it-is).
 
-2. Start Claude Code in the project. It asks whether to enable the `sketchup-bridge` MCP server from `.mcp.json`. Once you approve it, Claude has two tools: `evaluate_ruby`, and `run_tests` for running TestUp tests.
+2. Start your AI agent in the project. Claude Code reads `.mcp.json`, and asks whether to enable the `sketchup-bridge` MCP server. For another agent, register `ruby tools/sketchup-bridge/mcp_server.rb` as an MCP server that runs over stdio, with the project as its working directory. The agent then has two tools: `evaluate_ruby`, and `run_tests` for running TestUp tests.
 
-The MCP server needs Ruby 2.7 or newer on `PATH`, and no gems. Claude Code can be started before or after SketchUp. If SketchUp isn't running, the tool reports that instead of failing.
+The MCP server needs Ruby 2.7 or newer on `PATH`, and no gems. The agent can be started before or after SketchUp. If SketchUp isn't running, the tool reports that instead of failing. So far the bridge has only been used with Claude Code.
 
 ## From a terminal
 
@@ -44,9 +44,9 @@ The SketchUp instance that the bridge runs in looks like any other, and you can 
 
 **A frame in the viewport, for you.** While the bridge is running, the viewport has a thin orange frame, and one line of text at the top. It is there so that you don't open your own work in that instance by mistake. It is an overlay, named **SketchUp Bridge** in the Overlays panel, and it is added to every model you create or open. You can switch it off there, for instance when it is in the way of what you are testing. It then stays off in the models you create or open afterwards, and comes back the next time SketchUp is started with the bridge. An instance started without `--bridge` never shows it.
 
-**A notice in every reply, for Claude.** Every reply says which model is active: its file, or that it hasn't been saved to one, and whether it has unsaved changes.
+**A notice in every reply, for the agent.** Every reply says which model is active: its file, or that it hasn't been saved to one, and whether it has unsaved changes.
 
-**A refusal when the model was switched.** When the active model is not the one the previous call left, the bridge doesn't run the code. It replies that the model was switched, and that the user should be asked first. That happens when a model was created, opened or switched to outside the bridge, which is what it looks like when you open a model of your own. Only that one call is refused: the same code runs when it is sent again, so tell Claude to go on if the model is one it may work in. `run_tests` goes on refusing until it is told that the model is accepted. A model that the code itself creates, opens or closes is never refused, so Claude can still work with several models.
+**A refusal when the model was switched.** When the active model is not the one the previous call left, the bridge doesn't run the code. It replies that the model was switched, and that the user should be asked first. That happens when a model was created, opened or switched to outside the bridge, which is what it looks like when you open a model of your own. Only that one call is refused: the same code runs when it is sent again, so tell the agent to go on if the model is one it may work in. `run_tests` goes on refusing until it is told that the model is accepted. A model that the code itself creates, opens or closes is never refused, so the agent can still work with several models.
 
 ## Running TestUp tests
 
@@ -57,7 +57,7 @@ The SketchUp instance that the bridge runs in looks like any other, and you can 
 - **Reload:** folders or files of extension code to `load` again before running, such as `src/ex_hello_cube`. TestUp loads the test files again on every run, but not the code they test, so without this the tests keep running against the code SketchUp loaded at startup. The extension itself is expected to be loaded already.
 - **Seed:** the Minitest seed, which is reported with every run, so that an order-dependent failure can be repeated.
 
-Tests run in the active model, and many start by clearing it. So `run_tests` refuses to run in two cases, and Claude then asks before overriding the refusal:
+Tests run in the active model, and many start by clearing it. So `run_tests` refuses to run in two cases, and the agent is told to ask you before overriding the refusal:
 
 - **The model has unsaved changes**, unless the only changes since the previous run were made by the tests. Overridden with `discard_model_changes`.
 - **The model was created, opened or switched to outside the bridge**, even when it has no unsaved changes. A model you opened from a file would be emptied in SketchUp, and saving it after that would lose its contents. Overridden with `accept_switched_model`, once for that model. Unlike `evaluate_ruby`, sending the same call again doesn't override it.
@@ -72,7 +72,7 @@ A test that opens a model file, while the current one has unsaved changes, makes
 | `server.rb`      | SketchUp    | Listens for code and evaluates it                                            |
 | `model_watch.rb` | SketchUp    | Keeps track of which model is active, for the notice in every reply          |
 | `overlay.rb`     | SketchUp    | The frame in the viewport                                                    |
-| `mcp_server.rb`  | Claude Code | Provides the `evaluate_ruby` and `run_tests` tools, through the bridge       |
+| `mcp_server.rb`  | The agent   | Provides the `evaluate_ruby` and `run_tests` tools, through the bridge       |
 | `run_tests.rb`   | SketchUp    | The part of `run_tests` that runs inside SketchUp; loaded again on every run |
 | `client.rb`      | Terminal    | Sends code from the command line; used by `mcp_server.rb`                    |
 
@@ -90,7 +90,7 @@ Connect to `127.0.0.1:7200`, send the code as UTF-8, then close the sending side
 - `model_changed` is `true` when the active model is not the one the previous request left, so when it was created, opened or switched to outside the bridge. The code is then not run: `success` is `false`, and `error` says why. It is `true` in one reply only, so the same request runs when it is sent again. The first request after SketchUp starts has nothing to compare with, and always gets `false`.
 - A request that isn't valid, such as an HTTP request, gets neither.
 
-`client.rb` prints the result to stdout as before, and the active model to stderr. The tools that Claude uses end the tool result with it.
+`client.rb` prints the result to stdout as before, and the active model to stderr. The `evaluate_ruby` and `run_tests` tools end their result with it.
 
 Results and output are cut off at 50,000 characters. A connection that hasn't finished sending after 30 seconds is closed.
 
@@ -98,9 +98,9 @@ Results and output are cut off at 50,000 characters. A connection that hasn't fi
 
 - **One instance at a time.** The port is fixed, so a second SketchUp instance started with the bridge reports that the port is in use.
 - **Not while code is running.** The bridge doesn't answer while SketchUp is busy, including while a modal dialog is open.
-- **The refusal is a question, not a lock.** After a model is switched, one call is refused, and Claude is told to ask you. Nothing stops the same call from being sent again.
+- **The refusal is a question, not a lock.** After a model is switched, one call is refused, and the agent is told to ask you. Nothing stops the same call from being sent again.
 - **The bridge can't tell who switched the model.** It only knows that it didn't happen while code from the bridge was running. A switch that such code sets off for later, with a timer for instance, counts as made outside the bridge.
-- **The first request has nothing to compare with.** A model you open before Claude's first call is reported like any other, by its path, and code runs in it.
+- **The first request has nothing to compare with.** A model you open before the agent's first call is reported like any other, by its path, and code runs in it.
 - **The frame needs SketchUp 2023 or newer**, which is when overlays were added. Older versions run the bridge without it. It isn't in images written with `view.write_image`.
 - **Anyone on this machine can run code in SketchUp while the bridge is running.** It only listens on `127.0.0.1` and refuses HTTP requests, so other machines and web pages can't reach it, but there is no authentication. That's the same as the debugger, and the reason neither is started unless you ask for it.
 
