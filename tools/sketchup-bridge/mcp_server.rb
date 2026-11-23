@@ -33,9 +33,10 @@ module SketchUpBridge
         model.commit_operation, so that they are a single step the user can undo.
 
         Every result ends with which model is active. The user can work in this
-        SketchUp too. A result that starts with a warning that the active model
-        changed means the code ran in a model they created, opened or switched
-        to: ask before changing it.
+        SketchUp too. When they have created, opened or switched to another
+        model since the previous call, the code is not run, and the result says
+        so. Ask the user before sending it again, unless they have already said
+        to work in that model.
       TEXT
       inputSchema: {
         type: 'object',
@@ -99,6 +100,13 @@ module SketchUpBridge
     }.freeze
 
     TOOLS = [EVALUATE_RUBY, RUN_TESTS].freeze
+
+    # In place of the bridge's own refusal, which says to send the request
+    # again. That isn't enough for tests.
+    TESTS_NOT_RUN = 'Not run: the active model in SketchUp is not the one the previous call left. It was ' \
+                    'created, opened or switched to outside the bridge, most likely by the user, so it may ' \
+                    'hold their work. Tests can clear the model. Ask the user, then pass ' \
+                    'accept_switched_model if the tests may run in this model.'
 
     def self.run
       $stdin.binmode
@@ -175,10 +183,9 @@ module SketchUpBridge
       [with_model(text, response), !response['success']]
     end
 
-    # Adds which model the code ran in. The warning that the user seems to
-    # have switched model goes first, where it is hardest to miss.
+    # Adds which model is active.
     def self.with_model(text, response)
-      [SketchUpBridge.model_warning(response), text, SketchUpBridge.model_status(response)].compact.join("\n\n")
+      [text, SketchUpBridge.model_status(response)].compact.join("\n\n")
     end
 
     def self.run_tests(arguments)
@@ -201,11 +208,15 @@ module SketchUpBridge
              "end\n" \
              "SketchUpBridge::RunTests.run(JSON.parse(#{JSON.generate(options).dump}))"
       response = SketchUpBridge.evaluate(code)
+      # The bridge refuses the first request after the model was switched,
+      # and runs it when it is sent again.
+      response = SketchUpBridge.evaluate(code) if response['model_changed'] && options['accept_switched_model']
       text, error = test_result(response)
       [with_model(text, response), error]
     end
 
     def self.test_result(response)
+      return [TESTS_NOT_RUN, true] if response['model_changed']
       return [error_text(response), true] unless response['success']
 
       report = begin

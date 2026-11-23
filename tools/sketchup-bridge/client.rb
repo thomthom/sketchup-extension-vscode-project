@@ -18,13 +18,10 @@ module SketchUpBridge
 
   class NotRunning < StandardError; end
 
-  MODEL_CHANGED = 'WARNING: The active model in SketchUp is not the one the previous call left. It was ' \
-                  'created, opened or switched to outside the bridge, most likely by the user, so it ' \
-                  'may hold their work. Ask before changing it or running tests in it.'
-
   # Returns the bridge's response: a Hash with "success", "output", and either
-  # "result", or "error" and "backtrace". Also "model" and "model_changed",
-  # which `model_status` and `model_warning` turn into text.
+  # "result", or "error" and "backtrace". Also "model", which `model_status`
+  # turns into text, and "model_changed", which is true when the bridge
+  # refused to run the code because the active model was switched.
   def self.evaluate(code)
     socket = connect
     begin
@@ -55,12 +52,6 @@ module SketchUpBridge
     "[Active model: #{name}, #{model['modified'] ? 'with' : 'without'} unsaved changes]"
   end
 
-  # A warning when the user seems to have switched to another model since the
-  # previous call, otherwise nil.
-  def self.model_warning(response)
-    response['model_changed'] ? MODEL_CHANGED : nil
-  end
-
 end
 
 if $PROGRAM_NAME == __FILE__
@@ -81,6 +72,7 @@ if $PROGRAM_NAME == __FILE__
     warn(response['error'])
     response['backtrace'].each { |line| warn("  #{line}") }
   end
-  [SketchUpBridge.model_status(response), SketchUpBridge.model_warning(response)].compact.each { |line| warn(line) }
+  status = SketchUpBridge.model_status(response)
+  warn(status) if status
   exit(1) unless response['success']
 end

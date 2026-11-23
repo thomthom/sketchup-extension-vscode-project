@@ -44,12 +44,16 @@ module SketchUpBridge
     end
 
     # Call before running a request's code.
+    #
+    # @return [Boolean] whether the active model is another one than the
+    #   previous request left, in which case the code is not to be run
     def self.begin_request
       @at_start = current
       # Nothing to compare with on the first request. The model SketchUp
       # started with is often replaced before that, by picking a template.
       @changed = !@seen.nil? && @at_start != @seen
       @unexpected = true if @changed
+      @changed
     end
 
     # Call after running a request's code.

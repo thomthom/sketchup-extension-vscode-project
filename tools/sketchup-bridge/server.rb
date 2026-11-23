@@ -32,6 +32,14 @@ module SketchUpBridge
   # like HTTP means a web page can't use the bridge to run code in SketchUp.
   HTTP_REQUEST = %r{\A[A-Z]+ \S+ HTTP/\d}
 
+  # The reply to the first request after someone other than the bridge switched
+  # the active model. The code would otherwise run in a model that whoever
+  # sent it doesn't know about. The same request is run when it is sent again.
+  MODEL_SWITCHED = 'Not run: the active model in SketchUp is not the one the previous request left. It was ' \
+                   'created, opened or switched to outside the bridge, most likely by the user, so it may ' \
+                   'hold their work. Unless the user has said to work in this model, ask them first. Then ' \
+                   'send the request again to run it.'
+
   Request = Struct.new(:socket, :buffer, :started)
 
   def self.start
@@ -123,8 +131,7 @@ module SketchUpBridge
     return failure('The request is not valid UTF-8.') unless code.valid_encoding?
     return failure('HTTP requests are not accepted.') if code.match?(HTTP_REQUEST)
 
-    ModelWatch.begin_request
-    response = run(code)
+    response = ModelWatch.begin_request ? failure(MODEL_SWITCHED) : run(code)
     response.merge(ModelWatch.end_request)
   end
 
