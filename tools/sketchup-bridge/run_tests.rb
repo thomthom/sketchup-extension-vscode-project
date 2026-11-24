@@ -23,8 +23,13 @@ module SketchUpBridge
     module Setup
 
       TESTUP = 'https://github.com/SketchUp/testup-2'.freeze
-      EXTENSION_SOURCES = 'https://github.com/thomthom/extension-sources'.freeze
-      README = 'tools/sketchup-bridge/README.md'.freeze
+      # Where to get Extension Sources, and where its source code is.
+      EXTENSION_SOURCES =
+        'https://extensions.sketchup.com/extension/a9f18009-29cc-4c43-a0a7-e018e7a6563b/extension-sources'.freeze
+      EXTENSION_SOURCES_CODE = 'https://github.com/thomthom/extension-sources'.freeze
+
+      INSTALL = 'install Extension Sources from the Extension Warehouse ' \
+                "(#{EXTENSION_SOURCES}; its source code is at #{EXTENSION_SOURCES_CODE})".freeze
 
       AGENT = <<~TEXT.strip.freeze
         If you are an AI agent: guide the user through the setup, and ask before each step you do yourself. You may offer to clone a repository, and do it only when the user says yes. Don't edit the user's Extension Sources list or other SketchUp settings; the user adds folders in its dialog.
@@ -36,8 +41,8 @@ module SketchUpBridge
           #{problem}
 
           Setup, done once:
-          1. Get TestUp #{TESTUP_VERSION} or newer from #{TESTUP}. Install the RBZ from its Releases page if that version is there. Otherwise clone the repository and set it up from source, as its README describes. "Prerequisites" in #{README} says which branch to use.
-          2. A clone has to be loaded when SketchUp starts. Recommended: install Extension Sources (#{EXTENSION_SOURCES}) and add the clone's `src` folder in its dialog.
+          1. Get TestUp #{TESTUP_VERSION} or newer from #{TESTUP}. Install the RBZ from its Releases page, or clone the repository and set it up from source, as its README describes.
+          2. A clone has to be loaded when SketchUp starts. Recommended: #{INSTALL}, and add the clone's `src` folder in its dialog.
           3. Restart SketchUp with the bridge.
 
           #{AGENT}
@@ -57,7 +62,7 @@ module SketchUpBridge
           The extension in #{folder} is not loaded in this SketchUp instance. `reload` loads changed code again; it doesn't load an extension for the first time.
 
           Setup, done once:
-          1. Make SketchUp load the extension from its source folder when it starts. Recommended: install Extension Sources (#{EXTENSION_SOURCES}) and add #{registered ? source : "the folder with the extension's registration file"} in its dialog.
+          1. Make SketchUp load the extension from its source folder when it starts. Recommended: #{INSTALL}, and add #{registered ? source : "the folder with the extension's registration file"} in its dialog.
           2. Restart SketchUp with the bridge.
 
           #{AGENT}

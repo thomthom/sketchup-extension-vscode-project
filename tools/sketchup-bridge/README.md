@@ -7,9 +7,9 @@ It is a development tool, for use while working on an extension. Nothing here is
 ## Prerequisites
 
 - **Ruby 2.7 or newer on `PATH`**, for the launcher and the MCP server. No gems are needed.
-- **SketchUp 2024 or newer.**
-- **Your extension, loaded by SketchUp when it starts**, from the source folder you work in. The recommended way is [Extension Sources](https://github.com/thomthom/extension-sources): install it, and add the folder that holds your extension's registration file, such as this project's `src`, in its dialog. Any other way of loading the extension works too. The bridge only looks at whether it is loaded.
-- **For `run_tests`: [TestUp](https://github.com/SketchUp/testup-2) 2.6 or newer**, also loaded when SketchUp starts. Install the RBZ from its [Releases page](https://github.com/SketchUp/testup-2/releases) once 2.6 is there. As of November 2026 the newest tagged version is 2.5.4, and 2.6 is on the `dev/api-for-tools` branch. Until it is released, clone the repository, check out that branch, set it up from source as TestUp's README describes, and add the clone's `src` folder in Extension Sources.
+- **SketchUp 2024 or newer**, which is what the launcher accepts. It starts the debugger along with the bridge, and older versions don't bundle the `debug` gem that needs.
+- **Your extension, loaded by SketchUp when it starts**, from the source folder you work in. The recommended way is [Extension Sources](https://extensions.sketchup.com/extension/a9f18009-29cc-4c43-a0a7-e018e7a6563b/extension-sources): install it from the Extension Warehouse, and add the folder that holds your extension's registration file, such as this project's `src`, in its dialog. Its source code is [on GitHub](https://github.com/thomthom/extension-sources). Any other way of loading the extension works too. The bridge only looks at whether it is loaded.
+- **For `run_tests`: [TestUp](https://github.com/SketchUp/testup-2) 2.6 or newer**, also loaded when SketchUp starts. Install the RBZ from its [Releases page](https://github.com/SketchUp/testup-2/releases). Or clone the repository, set it up from source as TestUp's README describes, and add the clone's `src` folder in Extension Sources.
 
 When TestUp or the extension isn't loaded, `run_tests` says so, and gives these steps. An agent is told to guide you through them, and to ask before it does anything itself. It may offer to clone a repository. It is told not to edit your Extension Sources list or other SketchUp settings.
 
@@ -112,7 +112,7 @@ Results and output are cut off at 50,000 characters. A connection that hasn't fi
 - **The refusal is a question, not a lock.** After a model is switched, one call is refused, and the agent is told to ask you. Nothing stops the same call from being sent again.
 - **The bridge can't tell who switched the model.** It only knows that it didn't happen while code from the bridge was running. A switch that such code sets off for later, with a timer for instance, counts as made outside the bridge.
 - **The first request has nothing to compare with.** A model you open before the agent's first call is reported like any other, by its path, and code runs in it.
-- **The frame needs SketchUp 2023 or newer**, which is when overlays were added. Older versions run the bridge without it. It isn't in images written with `view.write_image`.
+- **The frame isn't in images written with `view.write_image`.** SketchUp leaves overlays out of those, so a screenshot the agent takes that way doesn't show it.
 - **Anyone on this machine can run code in SketchUp while the bridge is running.** It only listens on `127.0.0.1` and refuses HTTP requests, so other machines and web pages can't reach it, but there is no authentication. That's the same as the debugger, and the reason neither is started unless you ask for it.
 
 ## Why it works this way
