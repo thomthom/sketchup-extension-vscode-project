@@ -38,13 +38,22 @@ module SketchUpBridge
         model since the previous call, the code is not run, and the result says
         so. Ask the user before sending it again, unless they have already said
         to work in that model.
+
+        Say in `description` what the call is for. The user sees it in
+        SketchUp's viewport while the code runs, and after that with the time
+        it finished, so they can tell what you are doing in their SketchUp.
       TEXT
       inputSchema: {
         type: 'object',
         properties: {
-          code: { type: 'string', description: 'The Ruby code to evaluate.' }
+          code: { type: 'string', description: 'The Ruby code to evaluate.' },
+          description: {
+            type: 'string',
+            description: 'A few words for the user on what this call is for, such as "Checking the ' \
+                         'face normals of the cube". One line. It is cut off after 80 characters.'
+          }
         },
-        required: ['code']
+        required: %w[code description]
       }
     }.freeze
 
@@ -64,6 +73,9 @@ module SketchUpBridge
 
         Test files are loaded again on every run, but the extension code they
         test is not. After changing the extension, pass its folder in `reload`.
+
+        While the tests run, SketchUp's viewport tells the user which suite is
+        running, and afterwards how it went.
 
         TestUp and the extension under test have to be loaded in SketchUp
         already. When one of them isn't, the result says how to set it up. Guide
@@ -179,7 +191,7 @@ module SketchUpBridge
     end
 
     def self.evaluate_ruby(arguments)
-      response = SketchUpBridge.evaluate(arguments['code'].to_s)
+      response = SketchUpBridge.evaluate(arguments['code'].to_s, arguments['description'])
       text = response['output'].to_s
       if response['success']
         text += "=> #{response['result']}"
@@ -213,12 +225,26 @@ module SketchUpBridge
              "  $VERBOSE = verbose\n" \
              "end\n" \
              "SketchUpBridge::RunTests.run(JSON.parse(#{JSON.generate(options).dump}))"
-      response = SketchUpBridge.evaluate(code)
+      description = running(options)
+      response = SketchUpBridge.evaluate(code, description)
       # The bridge refuses the first request after the model was switched,
       # and runs it when it is sent again.
-      response = SketchUpBridge.evaluate(code) if response['model_changed'] && options['accept_switched_model']
+      if response['model_changed'] && options['accept_switched_model']
+        response = SketchUpBridge.evaluate(code, description)
+      end
       text, error = test_result(response)
       [with_model(text, response), error]
+    end
+
+    # What SketchUp shows the user while the tests run. run_tests.rb replaces
+    # it with how they went.
+    def self.running(options)
+      suite = File.basename(options['suite'])
+      tests = options['tests']
+      return "Running the #{suite} tests" if tests.empty?
+      return "Running #{tests.first} from #{suite}" if tests.size == 1
+
+      "Running part of the #{suite} tests"
     end
 
     def self.test_result(response)

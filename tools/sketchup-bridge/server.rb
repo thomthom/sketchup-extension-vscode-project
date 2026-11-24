@@ -6,13 +6,15 @@
 # file to SketchUp with the `-RubyStartup` switch.
 #
 # Protocol: connect to 127.0.0.1:7200, send the code, then half-close the
-# connection. The server replies with a single JSON object and closes it.
+# connection. The server replies with a single JSON object and closes it. The
+# code can be preceded by a line saying what it is for.
 
 require 'json'
 require 'socket'
 require 'stringio'
 
 require_relative 'model_watch'
+require_relative 'status'
 
 module SketchUpBridge
 
@@ -31,6 +33,11 @@ module SketchUpBridge
   # Browsers can send requests to localhost too. Refusing anything that looks
   # like HTTP means a web page can't use the bridge to run code in SketchUp.
   HTTP_REQUEST = %r{\A[A-Z]+ \S+ HTTP/\d}
+
+  # A first line that says what the code is for, to show the user while it
+  # runs. It is not part of the code: the line after it is line 1. To a bridge
+  # from before this was added it is a comment. Keep in sync with client.rb.
+  DESCRIPTION = /\A# bridge-description:([^\r\n]*)\r?\n?/.freeze
 
   # The reply to the first request after someone other than the bridge switched
   # the active model. The code would otherwise run in a model that whoever
@@ -127,15 +134,26 @@ module SketchUpBridge
     socket.close
   end
 
-  def self.evaluate(code)
-    return failure('The request is not valid UTF-8.') unless code.valid_encoding?
-    return failure('HTTP requests are not accepted.') if code.match?(HTTP_REQUEST)
+  def self.evaluate(request)
+    return failure('The request is not valid UTF-8.') unless request.valid_encoding?
+    return failure('HTTP requests are not accepted.') if request.match?(HTTP_REQUEST)
 
-    response = ModelWatch.begin_request ? failure(MODEL_SWITCHED) : run(code)
+    description = request[DESCRIPTION, 1]
+    code = description ? request.sub(DESCRIPTION, '') : request
+    response = ModelWatch.begin_request ? failure(MODEL_SWITCHED) : run(code, description)
     response.merge(ModelWatch.end_request)
   end
 
-  def self.run(code)
+  def self.run(code, description)
+    Status.start(description)
+    begin
+      capture(code)
+    ensure
+      Status.finish
+    end
+  end
+
+  def self.capture(code)
     output = StringIO.new
     stdout = $stdout
     stderr = $stderr

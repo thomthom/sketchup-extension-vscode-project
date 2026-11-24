@@ -134,8 +134,24 @@ module SketchUpBridge
       # A test file that requires the extension's code fails to load, and
       # TestUp prints why.
       result[:hint] ||= Setup::HINT if result[:error] && output.string.match?(Setup::NOT_FOUND)
+      show_outcome(File.basename(options['suite'].to_s), result)
       $stdout.write(JSON.generate(result))
       nil
+    end
+
+    # Tells the user at SketchUp how the tests went, on the frame in the
+    # viewport. An instance that was started before the bridge had this runs
+    # the older server.rb until it is restarted.
+    def self.show_outcome(suite, result)
+      return unless defined?(Status)
+
+      counts = result[:counts]
+      Status.outcome = if counts
+                         states = %w[passed failed error skipped].select { |state| counts.key?(state) }
+                         "#{suite} tests, #{states.map { |state| "#{counts[state]} #{state}" }.join(', ')}"
+                       else
+                         "#{suite} tests were not run"
+                       end
     end
 
     def self.run_suite(options)

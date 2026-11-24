@@ -38,9 +38,12 @@ The agent can be started before or after SketchUp. If SketchUp isn't running, th
 ```sh
 ruby tools/sketchup-bridge/client.rb "Sketchup.active_model.entities.size"
 ruby tools/sketchup-bridge/client.rb < script.rb
+ruby tools/sketchup-bridge/client.rb --description "Counting the entities" "Sketchup.active_model.entities.size"
 ```
 
 On an error it prints the message and backtrace to stderr, and exits with status 1.
+
+`--description` is optional. It is what the frame in the viewport shows while the code runs; see [Whose model it is](#whose-model-it-is).
 
 ## How the code runs
 
@@ -55,13 +58,15 @@ The SketchUp instance that the bridge runs in looks like any other, and you can 
 
 **A frame in the viewport, for you.** While the bridge is running, the viewport has a thin orange frame, and one line of text at the top. It is there so that you don't open your own work in that instance by mistake. It is an overlay, named **SketchUp Bridge** in the Overlays panel, and it is added to every model you create or open. You can switch it off there, for instance when it is in the way of what you are testing. It then stays off in the models you create or open afterwards, and comes back the next time SketchUp is started with the bridge. An instance started without `--bridge` never shows it.
 
+**A status line on the frame, for you.** At the bottom of the frame is a second line of text, which says what the agent is doing in SketchUp. While code from the bridge runs, it shows what the agent said the code is for, such as "Checking the face normals of the cube…". SketchUp is frozen for as long as that takes, and this tells you why. Afterwards it shows what ran last, and when: "Finished 14:33: Checking the face normals of the cube". For a test run it names the suite, and afterwards how the tests went: "Finished 14:33: Cube Example tests, 5 passed, 1 failed". Code that came with no description shows as "Running code". With several models open, the line is on the frame of the model the code ran in. It is part of the frame, so switching the frame off switches it off too.
+
 **A notice in every reply, for the agent.** Every reply says which model is active: its file, or that it hasn't been saved to one, and whether it has unsaved changes.
 
 **A refusal when the model was switched.** When the active model is not the one the previous call left, the bridge doesn't run the code. It replies that the model was switched, and that the user should be asked first. That happens when a model was created, opened or switched to outside the bridge, which is what it looks like when you open a model of your own. Only that one call is refused: the same code runs when it is sent again, so tell the agent to go on if the model is one it may work in. `run_tests` goes on refusing until it is told that the model is accepted. A model that the code itself creates, opens or closes is never refused, so the agent can still work with several models.
 
 ## Running TestUp tests
 
-`run_tests` runs a [TestUp](https://github.com/SketchUp/testup-2) test suite in SketchUp, and reports each failure, error and skip with its message and location. It needs TestUp 2.6 or newer loaded in that instance; see [Prerequisites](#prerequisites). It doesn't need TestUp's window, and doesn't install any gems.
+`run_tests` runs a [TestUp](https://github.com/SketchUp/testup-2) test suite in SketchUp, and reports each failure, error and skip with its message and location. It needs TestUp 2.6 or newer loaded in that instance; see [Prerequisites](#prerequisites). It doesn't need TestUp's window, and doesn't install any gems. The frame in the viewport says which suite is running, and afterwards how it went.
 
 - **Suite:** the folder holding the `TC_*.rb` files, such as `tests/Cube Example`.
 - **Tests:** test cases or single tests, such as `TC_Main` or `TC_Main#test_create_cube`, with or without their namespace. By default the whole suite runs. A name that matches no test is reported as an error.
@@ -83,6 +88,7 @@ A test that opens a model file, while the current one has unsaved changes, makes
 | `server.rb`      | SketchUp    | Listens for code and evaluates it                                            |
 | `model_watch.rb` | SketchUp    | Keeps track of which model is active, for the notice in every reply          |
 | `overlay.rb`     | SketchUp    | The frame in the viewport                                                    |
+| `status.rb`      | SketchUp    | What the frame says the agent is doing, or did last                          |
 | `mcp_server.rb`  | The agent   | Provides the `evaluate_ruby` and `run_tests` tools, through the bridge       |
 | `run_tests.rb`   | SketchUp    | The part of `run_tests` that runs inside SketchUp; loaded again on every run |
 | `client.rb`      | Terminal    | Sends code from the command line; used by `mcp_server.rb`                    |
@@ -101,6 +107,17 @@ Connect to `127.0.0.1:7200`, send the code as UTF-8, then close the sending side
 - `model_changed` is `true` when the active model is not the one the previous request left, so when it was created, opened or switched to outside the bridge. The code is then not run: `success` is `false`, and `error` says why. It is `true` in one reply only, so the same request runs when it is sent again. The first request after SketchUp starts has nothing to compare with, and always gets `false`.
 - A request that isn't valid, such as an HTTP request, gets neither.
 
+The code can be preceded by one line that says what it is for:
+
+```ruby
+# bridge-description: Counting the entities
+Sketchup.active_model.entities.size
+```
+
+The frame in the viewport shows that text while the code runs. The line is not part of the code, so the line after it is line 1 in a backtrace. Only the first line of the request is looked at, and it has to start exactly like that. The text is cut off after 80 characters. `client.rb` adds the line for `--description`, and the `evaluate_ruby` tool for its `description`. A bridge from before this was added runs the line as the comment it is.
+
+Code that the bridge runs can replace the text shown afterwards, with `SketchUpBridge::Status.outcome = "..."`. The test runner does, to say how the tests went.
+
 `client.rb` prints the result to stdout as before, and the active model to stderr. The `evaluate_ruby` and `run_tests` tools end their result with it.
 
 Results and output are cut off at 50,000 characters. A connection that hasn't finished sending after 30 seconds is closed.
@@ -112,6 +129,9 @@ Results and output are cut off at 50,000 characters. A connection that hasn't fi
 - **The refusal is a question, not a lock.** After a model is switched, one call is refused, and the agent is told to ask you. Nothing stops the same call from being sent again.
 - **The bridge can't tell who switched the model.** It only knows that it didn't happen while code from the bridge was running. A switch that such code sets off for later, with a timer for instance, counts as made outside the bridge.
 - **The first request has nothing to compare with.** A model you open before the agent's first call is reported like any other, by its path, and code runs in it.
+- **The status line says what the agent said.** The bridge shows the description it was sent, and doesn't check it against the code.
+- **The status line shows a time, not an age.** "Finished 14:33" stays until the next call, so look at the clock to tell how long ago that was.
+- **Every call draws the viewport once more**, to get the status line on screen before the code runs. That is a few milliseconds in a small model, and more in a heavy one. Not while the frame is switched off.
 - **The frame isn't in images written with `view.write_image`.** SketchUp leaves overlays out of those, so a screenshot the agent takes that way doesn't show it.
 - **Anyone on this machine can run code in SketchUp while the bridge is running.** It only listens on `127.0.0.1` and refuses HTTP requests, so other machines and web pages can't reach it, but there is no authentication. That's the same as the debugger, and the reason neither is started unless you ask for it.
 
@@ -124,3 +144,5 @@ SketchUp holds Ruby's global VM lock while it is idle, so Ruby threads in Sketch
 On Windows, up to SketchUp 2026, `Sketchup.active_model` is the same Ruby object after File > New or File > Open, and the observers on the previous model are gone. So the bridge counts the models that are created and opened, with an app observer, to tell that the model is another one. On macOS, and on Windows from SketchUp 2027, several models can be open, each with its own object, and comparing the objects tells when the user has switched between them.
 
 SketchUp gives a newly added overlay the state that the previous overlay with the same id was left in. The bridge only switches the first frame on, which is how a frame you switched off stays off in the models that follow.
+
+SketchUp doesn't draw the viewport while Ruby code runs. Asking for a redraw with `view.invalidate` before running the code is not enough: the redraw happens once the code is done, so the frame would show the previous status for the whole time SketchUp is frozen. The bridge calls `view.refresh` instead, which draws at once.

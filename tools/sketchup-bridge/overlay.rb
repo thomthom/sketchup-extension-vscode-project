@@ -1,7 +1,8 @@
 # Marks the SketchUp instance that the bridge runs in: a frame around the
 # viewport, with a line of text. It tells whoever sits at it that code sent
 # through the bridge may change or clear the model, so that they don't open
-# their own work in it by mistake.
+# their own work in it by mistake. A second line, at the bottom, says what the
+# agent is doing or did last.
 #
 # Loaded by server.rb once the bridge is listening, on SketchUp 2023 and newer,
 # which is when overlays were added.
@@ -57,10 +58,33 @@ module SketchUpBridge
 
       frame = new
       return unless model.overlays.add(frame) # False if it has one already.
+
+      @frames.delete_if { |_, other| !other.valid? } # Their models are gone.
+      @frames[model] = frame
       return if @switched_on
 
       frame.enabled = true
       @switched_on = true
+    end
+
+    # Several models can be open, each with a frame of its own.
+    @frames = {}.compare_by_identity
+
+    # @return [Frame, nil] the frame of a model that is still open
+    def self.of(model)
+      frame = @frames[model]
+      frame if frame&.valid?
+    end
+
+    # What the agent is doing in this model, shown at the bottom of the frame.
+    # See status.rb.
+    #
+    # @return [String, nil]
+    attr_reader :status
+
+    def status=(text)
+      @status = text
+      @status_size = nil
     end
 
     def initialize
@@ -75,11 +99,10 @@ module SketchUpBridge
       height = view.vpheight
       thickness = THICKNESS * scale
 
-      label = Geom::Point3d.new(width / 2.0, 0, 0)
-      @text_size ||= view.text_bounds(label, TEXT, TEXT_OPTIONS)
-      half = (@text_size.width / 2.0) + (PADDING * scale)
-      label_height = @text_size.height + (PADDING * scale)
-      label.y = label_height / 2.0
+      @text_size ||= view.text_bounds(ORIGIN, TEXT, TEXT_OPTIONS)
+      @status_size ||= view.text_bounds(ORIGIN, @status, TEXT_OPTIONS) if @status
+      label = tab(@text_size, width, 0, scale)
+      status = tab(@status_size, width, height, scale) if @status
 
       view.drawing_color = COLOR
       view.draw2d(GL_QUADS,
@@ -87,8 +110,9 @@ module SketchUpBridge
                   *quad(0, height - thickness, width, height),
                   *quad(0, thickness, thickness, height - thickness),
                   *quad(width - thickness, thickness, width, height - thickness),
-                  *quad(label.x - half, 0, label.x + half, label_height))
-      view.draw_text(label, TEXT, TEXT_OPTIONS)
+                  *quad(*label), *(status ? quad(*status) : []))
+      view.draw_text(centre(label), TEXT, TEXT_OPTIONS)
+      view.draw_text(centre(status), @status, TEXT_OPTIONS) if status
     end
 
     # From SketchUp 2025 the view is measured and drawn to in logical pixels.
@@ -99,6 +123,22 @@ module SketchUpBridge
     end
 
     private
+
+    # The rectangle behind a line of text, in the middle of the top edge of
+    # the frame, or of the bottom edge when `edge` is the height of the view.
+    #
+    # @return [Array(Float, Float, Float, Float)] left, top, right, bottom
+    def tab(text_size, width, edge, scale)
+      half = (text_size.width / 2.0) + (PADDING * scale)
+      tall = text_size.height + (PADDING * scale)
+      top = edge.zero? ? 0 : edge - tall
+      [(width / 2.0) - half, top, (width / 2.0) + half, top + tall]
+    end
+
+    def centre(rectangle)
+      left, top, right, bottom = rectangle
+      Geom::Point3d.new((left + right) / 2.0, (top + bottom) / 2.0, 0)
+    end
 
     def quad(left, top, right, bottom)
       [
