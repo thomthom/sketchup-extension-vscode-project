@@ -4,6 +4,17 @@ Lets an AI agent, such as Claude Code, run Ruby inside a running SketchUp instan
 
 It is a development tool, for use while working on an extension. Nothing here is part of the extension itself.
 
+## Prerequisites
+
+- **Ruby 2.7 or newer on `PATH`**, for the launcher and the MCP server. No gems are needed.
+- **SketchUp 2024 or newer.**
+- **Your extension, loaded by SketchUp when it starts**, from the source folder you work in. The recommended way is [Extension Sources](https://github.com/thomthom/extension-sources): install it, and add the folder that holds your extension's registration file, such as this project's `src`, in its dialog. Any other way of loading the extension works too. The bridge only looks at whether it is loaded.
+- **For `run_tests`: [TestUp](https://github.com/SketchUp/testup-2) 2.6 or newer**, also loaded when SketchUp starts. Install the RBZ from its [Releases page](https://github.com/SketchUp/testup-2/releases) once 2.6 is there. As of November 2026 the newest tagged version is 2.5.4, and 2.6 is on the `dev/api-for-tools` branch. Until it is released, clone the repository, check out that branch, set it up from source as TestUp's README describes, and add the clone's `src` folder in Extension Sources.
+
+When TestUp or the extension isn't loaded, `run_tests` says so, and gives these steps. An agent is told to guide you through them, and to ask before it does anything itself. It may offer to clone a repository. It is told not to edit your Extension Sources list or other SketchUp settings.
+
+**Trying it before setting up.** The agent can load TestUp or your extension into the running instance with `evaluate_ruby`, for instance `$LOAD_PATH << 'C:/path/to/testup-2/src'; require 'testup'`. That lasts until SketchUp closes, and has to be done again every time. It is for a first try, and no replacement for the setup above.
+
 ## Setup
 
 1. Start SketchUp with the bridge, using the **Launch SketchUp for debugging, with AI agent bridge** task, or:
@@ -18,7 +29,7 @@ It is a development tool, for use while working on an extension. Nothing here is
 
 2. Start your AI agent in the project. Claude Code reads `.mcp.json`, and asks whether to enable the `sketchup-bridge` MCP server. For another agent, register `ruby tools/sketchup-bridge/mcp_server.rb` as an MCP server that runs over stdio, with the project as its working directory. The agent then has two tools: `evaluate_ruby`, and `run_tests` for running TestUp tests.
 
-The MCP server needs Ruby 2.7 or newer on `PATH`, and no gems. The agent can be started before or after SketchUp. If SketchUp isn't running, the tool reports that instead of failing. So far the bridge has only been used with Claude Code.
+The agent can be started before or after SketchUp. If SketchUp isn't running, the tool reports that instead of failing. So far the bridge has only been used with Claude Code.
 
 ## From a terminal
 
@@ -50,11 +61,11 @@ The SketchUp instance that the bridge runs in looks like any other, and you can 
 
 ## Running TestUp tests
 
-`run_tests` runs a [TestUp](https://github.com/SketchUp/testup-2) test suite in SketchUp, and reports each failure, error and skip with its message and location. It needs TestUp 2.6 or newer loaded in that instance. It doesn't need TestUp's window, and doesn't install any gems.
+`run_tests` runs a [TestUp](https://github.com/SketchUp/testup-2) test suite in SketchUp, and reports each failure, error and skip with its message and location. It needs TestUp 2.6 or newer loaded in that instance; see [Prerequisites](#prerequisites). It doesn't need TestUp's window, and doesn't install any gems.
 
 - **Suite:** the folder holding the `TC_*.rb` files, such as `tests/Cube Example`.
 - **Tests:** test cases or single tests, such as `TC_Main` or `TC_Main#test_create_cube`, with or without their namespace. By default the whole suite runs. A name that matches no test is reported as an error.
-- **Reload:** folders or files of extension code to `load` again before running, such as `src/ex_hello_cube`. TestUp loads the test files again on every run, but not the code they test, so without this the tests keep running against the code SketchUp loaded at startup. The extension itself is expected to be loaded already.
+- **Reload:** folders or files of extension code to `load` again before running, such as `src/ex_hello_cube`. TestUp loads the test files again on every run, but not the code they test, so without this the tests keep running against the code SketchUp loaded at startup. The extension has to be loaded already. `run_tests` checks that Ruby has loaded code from these folders, however it got loaded, and says how to set the extension up when it hasn't. Without `reload` it can't tell which extension the tests are for. If tests then fail on a constant or a file that isn't found, the result adds a hint to pass the extension's folder here.
 - **Seed:** the Minitest seed, which is reported with every run, so that an order-dependent failure can be repeated.
 
 Tests run in the active model, and many start by clearing it. So `run_tests` refuses to run in two cases, and the agent is told to ask you before overriding the refusal:

@@ -17,6 +17,70 @@ module SketchUpBridge
     # error for test names that match nothing.
     TESTUP_VERSION = '2.6.0'
 
+    # What to tell whoever runs the tests when something the tests need is not
+    # loaded in SketchUp. The setup that lasts comes first; loading for this
+    # instance only is a stopgap, and is presented as one.
+    module Setup
+
+      TESTUP = 'https://github.com/SketchUp/testup-2'.freeze
+      EXTENSION_SOURCES = 'https://github.com/thomthom/extension-sources'.freeze
+      README = 'tools/sketchup-bridge/README.md'.freeze
+
+      AGENT = <<~TEXT.strip.freeze
+        If you are an AI agent: guide the user through the setup, and ask before each step you do yourself. You may offer to clone a repository, and do it only when the user says yes. Don't edit the user's Extension Sources list or other SketchUp settings; the user adds folders in its dialog.
+      TEXT
+
+      # @param [String] problem what is wrong with TestUp in this instance
+      def self.testup(problem)
+        <<~TEXT.strip
+          #{problem}
+
+          Setup, done once:
+          1. Get TestUp #{TESTUP_VERSION} or newer from #{TESTUP}. Install the RBZ from its Releases page if that version is there. Otherwise clone the repository and set it up from source, as its README describes. "Prerequisites" in #{README} says which branch to use.
+          2. A clone has to be loaded when SketchUp starts. Recommended: install Extension Sources (#{EXTENSION_SOURCES}) and add the clone's `src` folder in its dialog.
+          3. Restart SketchUp with the bridge.
+
+          #{AGENT}
+
+          #{workaround("$LOAD_PATH << '<the clone>/src'; require 'testup'")}
+        TEXT
+      end
+
+      # @param [String] folder the extension's folder, as given in "reload"
+      def self.extension(folder)
+        source = File.dirname(folder)
+        name = File.basename(folder)
+        registered = File.exist?("#{folder}.rb")
+        code = registered ? "$LOAD_PATH << '#{source}'; require '#{name}'" : nil
+        code ||= "$LOAD_PATH << '<the folder with the registration file>'; require '<the registration file>'"
+        <<~TEXT.strip
+          The extension in #{folder} is not loaded in this SketchUp instance. `reload` loads changed code again; it doesn't load an extension for the first time.
+
+          Setup, done once:
+          1. Make SketchUp load the extension from its source folder when it starts. Recommended: install Extension Sources (#{EXTENSION_SOURCES}) and add #{registered ? source : "the folder with the extension's registration file"} in its dialog.
+          2. Restart SketchUp with the bridge.
+
+          #{AGENT}
+
+          #{workaround(code)}
+        TEXT
+      end
+
+      def self.workaround(code)
+        'Quick workaround, for this SketchUp instance only, when the user wants to try things before setting up: ' \
+          "run `#{code}` with evaluate_ruby. It is gone when SketchUp closes. Offer it as a stopgap, not as the setup."
+      end
+
+      # How it shows when the extension under test isn't loaded and "reload"
+      # wasn't given, so that there is no telling which extension that is.
+      NOT_FOUND = /uninitialized constant|cannot load such file/.freeze
+
+      HINT = 'A constant or a file was not found. If it belongs to the extension under test, that extension ' \
+             "is not loaded in this SketchUp instance. Pass the extension's folder in `reload` to check: " \
+             'the reply then says how to set it up.'.freeze
+
+    end
+
     # Notices changes to the model made after a test run: by the user, or by
     # code sent through the bridge. Changes the tests made themselves are fine
     # to throw away; anything else might be the user's work.
@@ -62,6 +126,9 @@ module SketchUpBridge
         $stderr = stderr
       end
       result[:output] = output.string
+      # A test file that requires the extension's code fails to load, and
+      # TestUp prints why.
+      result[:hint] ||= Setup::HINT if result[:error] && output.string.match?(Setup::NOT_FOUND)
       $stdout.write(JSON.generate(result))
       nil
     end
@@ -72,6 +139,9 @@ module SketchUpBridge
 
       suite_path = options['suite']
       return { error: "No such test suite folder: #{suite_path}" } unless File.directory?(suite_path)
+
+      error = check_extension(options['reload'] || [])
+      return { error: error } if error
 
       refusal = refusal(Sketchup.active_model, options)
       return { refused: refusal } if refusal
@@ -97,16 +167,47 @@ module SketchUpBridge
       seconds = Time.now - started
 
       track(Sketchup.active_model)
-      summarize(results, seed, seconds, reloaded)
+      result = summarize(results, seed, seconds, reloaded)
+      result[:hint] = Setup::HINT if not_found?(result[:problems])
+      result
     end
 
     def self.check_testup
-      return 'TestUp is not loaded in this SketchUp instance.' unless defined?(TestUp::API)
+      unless defined?(TestUp::API)
+        return Setup.testup('TestUp is not loaded in this SketchUp instance, and run_tests needs it.')
+      end
 
       version = TestUp::PLUGIN_VERSION
       return nil if Gem::Version.new(version) >= Gem::Version.new(TESTUP_VERSION)
 
-      "run_tests needs TestUp #{TESTUP_VERSION} or newer, and this instance has TestUp #{version}."
+      Setup.testup("This SketchUp instance has TestUp #{version}, and run_tests needs #{TESTUP_VERSION} or newer.")
+    end
+
+    def self.not_found?(problems)
+      problems.any? do |problem|
+        problem[:failures].any? { |failure| failure[:message].to_s.match?(Setup::NOT_FOUND) }
+      end
+    end
+
+    # The code to reload has to be loaded already. It doesn't matter how it got
+    # loaded, so this looks at what Ruby has loaded and not at any particular
+    # way of loading extensions.
+    def self.check_extension(paths)
+      missing = paths.find { |path| !File.exist?(path) }
+      return "No such file or folder to reload: #{missing}" if missing
+
+      loaded = $LOADED_FEATURES.map { |file| comparable(file) }
+      folders = paths.map { |path| File.directory?(path) ? path : File.dirname(path) }
+      unloaded = folders.find do |folder|
+        prefix = "#{comparable(folder)}/"
+        loaded.none? { |file| file.start_with?(prefix) }
+      end
+      unloaded && Setup.extension(unloaded)
+    end
+
+    # File systems on Windows and macOS don't tell upper case from lower case.
+    def self.comparable(path)
+      File.expand_path(path).downcase
     end
 
     # Loads extension code again, so the tests run against the latest source.

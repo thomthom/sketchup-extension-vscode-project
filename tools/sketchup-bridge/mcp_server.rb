@@ -64,6 +64,11 @@ module SketchUpBridge
 
         Test files are loaded again on every run, but the extension code they
         test is not. After changing the extension, pass its folder in `reload`.
+
+        TestUp and the extension under test have to be loaded in SketchUp
+        already. When one of them isn't, the result says how to set it up. Guide
+        the user through that setup, and ask before cloning or installing
+        anything.
       TEXT
       inputSchema: {
         type: 'object',
@@ -226,7 +231,10 @@ module SketchUpBridge
         return ["Unexpected output from the test runner:\n#{response['output']}", true]
       end
       return [report['refused'], true] if report['refused']
-      return [[report['error'], *report['backtrace'], report['output']].compact.join("\n"), true] if report['error']
+      if report['error']
+        parts = [report['error'], *report['backtrace'], report['output'], report['hint']]
+        return [parts.compact.join("\n").strip, true]
+      end
 
       [test_report(report), false]
     end
@@ -258,6 +266,7 @@ module SketchUpBridge
         lines << 'Output:'
         lines << report['output']
       end
+      lines.push('', report['hint']) if report['hint']
       lines.join("\n")
     end
 
