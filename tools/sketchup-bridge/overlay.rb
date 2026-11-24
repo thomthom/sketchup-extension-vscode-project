@@ -84,7 +84,8 @@ module SketchUpBridge
 
     def status=(text)
       @status = text
-      @status_size = nil
+      @full_size = nil
+      @room = nil
     end
 
     def initialize
@@ -100,9 +101,11 @@ module SketchUpBridge
       thickness = THICKNESS * scale
 
       @text_size ||= view.text_bounds(ORIGIN, TEXT, TEXT_OPTIONS)
-      @status_size ||= view.text_bounds(ORIGIN, @status, TEXT_OPTIONS) if @status
       label = tab(@text_size, width, 0, scale)
-      status = tab(@status_size, width, height, scale) if @status
+      if @status
+        fit_status(view, width - (2 * (thickness + (PADDING * scale))))
+        status = tab(@status_size, width, height, scale)
+      end
 
       view.drawing_color = COLOR
       view.draw2d(GL_QUADS,
@@ -112,7 +115,7 @@ module SketchUpBridge
                   *quad(width - thickness, thickness, width, height - thickness),
                   *quad(*label), *(status ? quad(*status) : []))
       view.draw_text(centre(label), TEXT, TEXT_OPTIONS)
-      view.draw_text(centre(status), @status, TEXT_OPTIONS) if status
+      view.draw_text(centre(status), @shown, TEXT_OPTIONS) if status
     end
 
     # From SketchUp 2025 the view is measured and drawn to in logical pixels.
@@ -123,6 +126,32 @@ module SketchUpBridge
     end
 
     private
+
+    # Works out the status text to draw, and its size: all of it, or as much
+    # as there is room for between the sides of the frame. It only measures
+    # when the text or the room has changed.
+    def fit_status(view, room)
+      @full_size ||= view.text_bounds(ORIGIN, @status, TEXT_OPTIONS)
+      if @full_size.width <= room
+        @shown = @status
+        @status_size = @full_size
+        @room = nil
+        return
+      end
+      return if @room == room
+
+      @room = room
+      @shown = @status
+      @status_size = @full_size
+      while @status_size.width > room && @shown.length > 1
+        # The share of the text that fits is a good first guess. Each round
+        # cuts at least one character more.
+        keep = (@shown.length * room / @status_size.width).floor - 1
+        keep = [[keep, @shown.length - 2].min, 0].max
+        @shown = "#{@shown[0, keep].rstrip}#{Status::ELLIPSIS}"
+        @status_size = view.text_bounds(ORIGIN, @shown, TEXT_OPTIONS)
+      end
+    end
 
     # The rectangle behind a line of text, in the middle of the top edge of
     # the frame, or of the bottom edge when `edge` is the height of the view.

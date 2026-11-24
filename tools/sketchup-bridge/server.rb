@@ -146,11 +146,9 @@ module SketchUpBridge
 
   def self.run(code, description)
     Status.start(description)
-    begin
-      capture(code)
-    ensure
-      Status.finish
-    end
+    response = capture(code)
+  ensure
+    Status.finish(failed: !(response && response[:success]))
   end
 
   def self.capture(code)

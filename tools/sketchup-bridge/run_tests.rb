@@ -143,7 +143,9 @@ module SketchUpBridge
     # viewport. An instance that was started before the bridge had this runs
     # the older server.rb until it is restarted.
     def self.show_outcome(suite, result)
-      return unless defined?(Status)
+      # By its full name: a bare `Status` would also find one that another
+      # extension defined at top level.
+      return unless defined?(SketchUpBridge::Status)
 
       counts = result[:counts]
       Status.outcome = if counts
@@ -152,6 +154,9 @@ module SketchUpBridge
                        else
                          "#{suite} tests were not run"
                        end
+    rescue StandardError
+      # The results matter more than telling the user about them.
+      nil
     end
 
     def self.run_suite(options)
@@ -278,7 +283,7 @@ module SketchUpBridge
     # server.rb keeps track of this. An instance that was started before the
     # bridge did so runs the older server.rb until it is restarted.
     def self.switched_model?
-      defined?(ModelWatch) && ModelWatch.unexpected?
+      defined?(SketchUpBridge::ModelWatch) && ModelWatch.unexpected?
     end
 
     def self.safe_to_change?(model)
@@ -300,7 +305,7 @@ module SketchUpBridge
     # without its observers, so the object and the tracker alone can't tell
     # that the model is another.
     def self.replacements
-      defined?(ModelWatch) ? ModelWatch.replacements : 0
+      defined?(SketchUpBridge::ModelWatch) ? ModelWatch.replacements : 0
     end
 
     # @param [TestUp::Report::TestSuite] results

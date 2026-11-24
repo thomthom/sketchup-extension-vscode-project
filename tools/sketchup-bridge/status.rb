@@ -37,11 +37,18 @@ module SketchUpBridge
     # @param [String] text
     def self.outcome=(text)
       @outcome = line(text)
+    rescue StandardError => error
+      # This is called from the code that runs, which must not fail over it.
+      warn("SketchUp bridge: could not set the status: #{error.class}: #{error.message}")
     end
 
     # The code might have closed the model it started in, or opened another.
-    def self.finish
-      text = "Finished #{Time.now.strftime('%H:%M')}: #{@outcome || @description}"
+    #
+    # @param [Boolean] failed whether the code raised an error. What it said
+    #   about how it went doesn't count then.
+    def self.finish(failed: false)
+      time = Time.now.strftime('%H:%M')
+      text = failed ? "Failed #{time}: #{@description}" : "Finished #{time}: #{@outcome || @description}"
       active = Sketchup.active_model
       show(@model, text)
       show(active, text) unless active.equal?(@model)
@@ -67,9 +74,11 @@ module SketchUpBridge
     end
 
     # The text comes from outside, and is shown to the user: one line of it,
-    # and not too long.
+    # and not too long. It can be in any encoding when it comes from code that
+    # sets the outcome.
     def self.line(text)
-      text = text.to_s.scrub.gsub(/[[:space:][:cntrl:]]+/, ' ').sub(ENDING, '').strip
+      text = text.to_s.encode(Encoding::UTF_8, invalid: :replace, undef: :replace).scrub
+      text = text.gsub(/[[:space:][:cntrl:]]+/, ' ').sub(ENDING, '').strip
       return nil if text.empty?
 
       text.length > MAX_LENGTH ? "#{text[0, MAX_LENGTH - 1].sub(ENDING, '')}#{ELLIPSIS}" : text

@@ -209,8 +209,9 @@ module SketchUpBridge
     def self.run_tests(arguments)
       options = {
         'suite' => expand_path(arguments['suite'].to_s),
-        'tests' => arguments['tests'] || [],
-        'reload' => (arguments['reload'] || []).map { |path| expand_path(path) },
+        # Array(), as a single name or path may come as a string.
+        'tests' => Array(arguments['tests']),
+        'reload' => Array(arguments['reload']).map { |path| expand_path(path) },
         'seed' => arguments['seed'],
         'discard_model_changes' => arguments['discard_model_changes'] == true,
         'accept_switched_model' => arguments['accept_switched_model'] == true

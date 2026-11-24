@@ -65,7 +65,10 @@ module SketchUpBridge
 end
 
 if $PROGRAM_NAME == __FILE__
-  description = ARGV.shift(2).last if ARGV.first == '--description'
+  if ARGV.first == '--description'
+    abort('Usage: client.rb [--description TEXT] [CODE]   (the code is read from stdin when not given)') if ARGV.size < 2
+    description = ARGV.shift(2).last
+  end
   code = ARGV.empty? ? $stdin.read : ARGV.join(' ')
 
   begin
